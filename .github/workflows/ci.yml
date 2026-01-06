@@ -48,6 +48,9 @@ jobs:
           python -m orchestration.run_once
           python -m orchestration.run_once
 
+      - name: Build marts
+        run: python -m models.run_models
+
       - name: Smoke assertions
         run: |
           python - << 'PY'
