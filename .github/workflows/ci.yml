@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: observability
+          POSTGRES_USER: observability
+          POSTGRES_PASSWORD: observability
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U observability -d observability"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 30
+
+    env:
+      DATABASE_URL: postgresql://observability:observability@localhost:5432/observability
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Init DB
+        run: python infra/init_db.py
+
+      - name: Run pipeline a few times
+        run: |
+          python -m orchestration.run_once
+          python -m orchestration.run_once
+          python -m orchestration.run_once
+
+      - name: Smoke assertions
+        run: |
+          python - << 'PY'
+          import os, psycopg2
+          dsn = os.environ["DATABASE_URL"]
+          with psycopg2.connect(dsn) as conn, conn.cursor() as cur:
+              cur.execute("select count(*) from raw.connector_runs;")
+              runs = cur.fetchone()[0]
+              assert runs > 0, "No runs inserted"
+              cur.execute("select count(*) from mart.connector_health_daily;")
+              kpi = cur.fetchone()[0]
+              assert kpi > 0, "No KPI view rows"
+          print("CI smoke OK")
+          PY
