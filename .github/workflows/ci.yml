@@ -25,9 +25,11 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://observability:observability@localhost:5432/observability
+      PYTHONPATH: .
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
