@@ -9,7 +9,13 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./infra:/infra
+      # compose file is inside infra/, so "." == repo/infra (where init.sql lives)
+      - ./:/infra
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U observability -d observability"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 
 volumes:
   db_data:
